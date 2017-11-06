@@ -112,9 +112,9 @@ function findHTMLMetaTags(content, url) {
                 if (metaValue[0] === '/') {
                     if (metaValue.length <= 1 || metaValue[1] !== '/') {
                         if (url[url.length - 1] === '/') {
-                            metaValue = url + metaValue.substring(1);
+                            metaValue = `${url}${metaValue.substring(1)}`;
                         } else {
-                            metaValue = url + metaValue;
+                            metaValue = `${url}${metaValue}`;
                         }
                     } else {
                         // handle protocol agnostic meta URLs
@@ -244,7 +244,7 @@ function getUrls(contentToMatch) {
     } else if (__DEV__) {
         if (__DEV__) {
             console.log(error);
-            console.log('Could not find html link);
+            console.log('Could not find html link');
         }
     }
     return urlsToReturn;
