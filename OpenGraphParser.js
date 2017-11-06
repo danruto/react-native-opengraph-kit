@@ -1,3 +1,5 @@
+// Based off: https://github.com/Osedea/react-native-opengraph-kit/
+// License: MIT (https://github.com/Osedea/react-native-opengraph-kit/blob/master/LICENSE)
 import { AllHtmlEntities } from 'html-entities';
 
 const entities = new AllHtmlEntities();
@@ -5,65 +7,65 @@ const entities = new AllHtmlEntities();
 function findOGTags(content, url) {
     const metaTagOGRegex = /<meta[^>]*(?:property=[ '"]*og:([^'"]*))?[^>]*(?:content=["]([^"]*)["])?[^>]*>/gi;
     const matches = content.match(metaTagOGRegex);
-    let meta = {};
+    const meta = {};
 
     if (matches) {
         const metaPropertyRegex = /<meta[^>]*property=[ "]*og:([^"]*)[^>]*>/i;
         const metaContentRegex = /<meta[^>]*content=[ "]([^"]*)[^>]*>/i;
 
-        for (let i = matches.length; i--;) {
+        matches.forEach((match) => {
             let metaName;
             let metaValue;
+            let propertyMatch;
+            let contentMatch;
 
             try {
-                const propertyMatch = metaPropertyRegex.exec(matches[i]);
-                const contentMatch = metaContentRegex.exec(matches[i]);
+                propertyMatch = metaPropertyRegex.exec(match);
+                contentMatch = metaContentRegex.exec(match);
 
                 if (!propertyMatch || !contentMatch) {
-                    continue;
+                    return;
                 }
 
                 metaName = propertyMatch[1].trim();
                 metaValue = contentMatch[1].trim();
 
                 if (!metaName || !metaValue) {
-                    continue;
+                    return;
                 }
             } catch (error) {
                 if (__DEV__) {
-                    console.log('Error on ', matches[i]);
-                    console.log('propertyMatch', propertyMatch);
-                    console.log('contentMatch', contentMatch);
                     console.log(error);
                 }
 
-                continue;
+                return;
             }
 
             if (metaValue.length > 0) {
                 if (metaValue[0] === '/') {
                     if (metaValue.length <= 1 || metaValue[1] !== '/') {
                         if (url[url.length - 1] === '/') {
-                            metaValue = url + metaValue.substring(1);
+                            metaValue = `${url}${metaValue.substring(1)}`;
                         } else {
-                            metaValue = url + metaValue;
+                            metaValue = `${url}${metaValue}`;
                         }
                     } else {
                         // handle protocol agnostic meta URLs
                         if (url.indexOf('https://') === 0) {
                             metaValue = `https:${metaValue}`;
                         }
-                        else if (url.indexOf('http://') === 0) {
+
+                        if (url.indexOf('http://') === 0) {
                             metaValue = `http:${metaValue}`;
                         }
                     }
                 }
             } else {
-                continue;
+                return;
             }
 
             meta[metaName] = entities.decode(metaValue);
-        }
+        });
     }
 
     return meta;
@@ -72,39 +74,38 @@ function findOGTags(content, url) {
 function findHTMLMetaTags(content, url) {
     const metaTagHTMLRegex = /<meta(?:[^>]*(?:name|itemprop)=[ '"]([^'"]*))?[^>]*(?:[^>]*content=["]([^"]*)["])?[^>]*>/gi;
     const matches = content.match(metaTagHTMLRegex);
-    let meta = {};
+    const meta = {};
 
     if (matches) {
         const metaPropertyRegex = /<meta[^>]*(?:name|itemprop)=[ "]([^"]*)[^>]*>/i;
         const metaContentRegex = /<meta[^>]*content=[ "]([^"]*)[^>]*>/i;
 
-        for (let i = matches.length; i--;) {
+        matches.forEach((match) => {
             let metaName;
             let metaValue;
+            let propertyMatch;
+            let contentMatch;
 
             try {
-                const propertyMatch = metaPropertyRegex.exec(matches[i]);
-                const contentMatch = metaContentRegex.exec(matches[i]);
+                propertyMatch = metaPropertyRegex.exec(match);
+                contentMatch = metaContentRegex.exec(match);
 
                 if (!propertyMatch || !contentMatch) {
-                    continue;
+                    return;
                 }
 
                 metaName = propertyMatch[1].trim();
                 metaValue = contentMatch[1].trim();
 
                 if (!metaName || !metaValue) {
-                    continue;
+                    return;
                 }
             } catch (error) {
                 if (__DEV__) {
-                    console.log('Error on ', matches[i]);
-                    console.log('propertyMatch', propertyMatch);
-                    console.log('contentMatch', contentMatch);
                     console.log(error);
                 }
 
-                continue;
+                return;
             }
 
             if (metaValue.length > 0) {
@@ -120,17 +121,17 @@ function findHTMLMetaTags(content, url) {
                         if (url.indexOf('https://') === 0) {
                             metaValue = `https:${metaValue}`;
                         }
-                        else if (url.indexOf('http://') === 0) {
+                        if (url.indexOf('http://') === 0) {
                             metaValue = `http:${metaValue}`;
                         }
                     }
                 }
             } else {
-                continue;
+                return;
             }
 
             meta[metaName] = entities.decode(metaValue);
-        }
+        });
 
         if (!meta.title) {
             const titleRegex = /<title>([^>]*)<\/title>/i;
@@ -156,7 +157,7 @@ function parseMeta(html, url, options) {
             };
         } catch (error) {
             if (__DEV__) {
-                console.log('Error in fallback', error);
+                console.log(error);
             }
         }
     }
@@ -164,7 +165,7 @@ function parseMeta(html, url, options) {
     return meta;
 }
 
-async function fetchHtml(urlToFetch, forceGoogle = false) {
+async function fetchHtml({ urlToFetch, forceGoogle = false, followRedirects = true }) {
     let result;
 
     let userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36';
@@ -177,39 +178,36 @@ async function fetchHtml(urlToFetch, forceGoogle = false) {
         result = await fetch(urlToFetch, {
             method: 'GET',
             headers: {
-                "user-agent": userAgent,
+                'user-agent': userAgent,
             },
+            redirect: followRedirects ? 'follow' : 'manual',
         });
 
         if (result.status >= 400) {
             throw result;
         }
 
-        return result.text()
-        .then((resultParsed) => (resultParsed));
+        const resultParsed = await result.text();
+        return resultParsed;
     } catch (responseOrError) {
         if (responseOrError.message && __DEV__) {
             if (responseOrError.message === 'Network request failed') {
-                console.log(urlToFetch, 'could not be fetched');
+                console.log(`Failed to fetch url ${urlToFetch}`);
             } else {
-                console.log(responseOrError);
+                console.log(`Failed to fetch url ${urlToFetch}`);
             }
             return null;
         }
 
-        return responseOrError.text()
-        .then((error) => {
-            if (__DEV__) {
-                console.log('An error has occured while fetching url content', error);
-            }
-            return null;
-        });
+        const responseOrErrorParsed = await responseOrError.text();
+        console.log(responseOrErrorParsed);
+        return null;
     }
 }
 
-async function fetchJSON(urlToFetch, urlOfVideo) {
+async function fetchJSON({ urlToFetch, urlOfVideo }) {
     try {
-        result = await fetch(urlToFetch, { method: 'GET' });
+        const result = await fetch(urlToFetch, { method: 'GET' });
 
         if (result.status >= 400) {
             throw result;
@@ -225,13 +223,13 @@ async function fetchJSON(urlToFetch, urlOfVideo) {
     } catch (error) {
         if (__DEV__) {
             console.log(error);
+            console.log(`Failed to fetch url ${urlToFetch}`);
         }
-        return null;
     }
 }
 
 function getUrls(contentToMatch) {
-    const regexp = /((?:(http|https|Http|Https)?:?\/?\/?(?:(?:[a-zA-Z0-9\$\-_\.\+!\*'\(\),;\?&=]|(?:%[a-fA-F0-9]{2})){1,64}(?::(?:[a-zA-Z0-9\$\-_\.\+!\*'\(\),;\?&=]|(?:%[a-fA-F0-9]{2})){1,25})?@)?)?((?:(?:[a-zA-Z0-9][a-zA-Z0-9\-]{0,64}\.)+(?:[a-z]{1,63}))|(?:(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[1-9])\.(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[1-9]|0)\.(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[1-9]|0)\.(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[0-9])))(?::\d{1,5})?)(\/(?:(?:[a-zA-Z0-9;\/\?:@&=#~\-\.\+!\*'\(\),_])|(?:%[a-fA-F0-9]{2}))*)?(?:\b|$)/gi;
+    const regexp = /((?:(http|https|Http|Https)?:?\/?\/?(?:(?:[a-zA-Z0-9\$\-_\.\+!\*'\(\),;\?&=]|(?:%[a-fA-F0-9]{2})){1,64}(?::(?:[a-zA-Z0-9\$\-_\.\+!\*'\(\),;\?&=]|(?:%[a-fA-F0-9]{2})){1,25})?@)?)?((?:(?:[a-zA-Z0-9][a-zA-Z0-9\-]{0,64}\.)+(?:[a-z]{1,63}))|(?:(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[1-9])\.(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[1-9]|0)\.(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[1-9]|0)\.(?:25[0-5]|2[0-4][0-9]|[0-1][0-9]{2}|[1-9][0-9]|[0-9])))(?::\d{1,5})?)(\/(?:(?:[a-zA-Z0-9;\/\?:@&=#~\-\.\+!\*'\(\),_])|(?:%[a-fA-F0-9]{2}))*)?(?:\b|$)/gi; // eslint-disable-line
     const urls = contentToMatch.match(regexp);
     const urlsToReturn = [];
 
@@ -243,41 +241,37 @@ function getUrls(contentToMatch) {
                 urlsToReturn.push(`http://${url}`);
             }
         });
-    } else {
+    } else if (__DEV__) {
         if (__DEV__) {
-            console.log('Could not find an html link');
+            console.log(error);
+            console.log('Could not find html link);
         }
     }
-
     return urlsToReturn;
 }
 
 async function extractMeta(textContent = '', options = { fallbackOnHTMLTags: true }) {
     try {
         const urls = getUrls(textContent);
-
         let metaData = null;
-        let i = 0;
 
-        while (!metaData && i < urls.length) {
-            if (urls[i].indexOf('youtube.com') >= 0) {
-              metaData = await fetchJSON(`https://www.youtube.com/oembed?url=${urls[i]}&format=json`, urls[i])
+        await Promise.all(urls.map(async (url) => {
+            if (url.indexOf('youtube.com') >= 0) {
+                metaData = await fetchJSON({ urlToFetch: `https://www.youtube.com/oembed?url=${url}&format=json`, urlOfVideo: url });
             } else {
-              metaData = await fetchHtml(urls[i])
-                  .then(
-                      (html) => ({
-                          ...html ? parseMeta(html, urls[i], options) : {},
-                          url: urls[i],
-                      })
-                  );
+                const html = await fetchHtml({ urlToFetch: url });
+                metaData = {
+                    ...html ? parseMeta(html, url, options) : {},
+                    url,
+                };
             }
-
-            i++;
-        }
+        }));
 
         return metaData;
-    } catch (e) {
-        console.log(e);
+    } catch (error) {
+        if (__DEV__) {
+            console.log(error);
+        }
 
         return {};
     }
